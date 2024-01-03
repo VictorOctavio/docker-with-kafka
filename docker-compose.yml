@@ -1,6 +1,22 @@
 #https://github.com/skylvr1289/sample_kafka
 version: '2'
 services:
+  postgres:
+      image: debezium/example-postgres:1.9
+      container_name: postgres
+      ports:
+        - 5433:5432
+      environment:
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=postgres
+
+# 1. kafka & zookeeper --> docker
+# 2. kafdrop --> docker
+# 3. postgres --> docker
+# 4. debezium connector --> docker
+# 5. pgAdmin/DBeaver --> local system
+# 6. Postman --> local system
+
 # Zookeeper, single node
   zookeeper:
     image: wurstmeister/zookeeper:latest
@@ -12,7 +28,7 @@ services:
       - 2888:2888
       - 3888:3888
 
- # kafka single node     
+# kafka single node     
   kafka1:
     image: wurstmeister/kafka:latest
     restart: "no"
@@ -37,7 +53,7 @@ services:
     ports:
       - 9093:9093
     environment:
-      KAFKA_BROKER_ID: 1
+      KAFKA_BROKER_ID: 2
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENERS: INTERNAL://:29093,EXTERNAL://:9093
       KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka2:29093,EXTERNAL://localhost:9093
@@ -56,4 +72,22 @@ services:
     depends_on:
       - kafka1
       - kafka2
-    
+
+# debezium connector
+  kconnect:
+    image: debezium/connect:1.9
+    ports:
+      - 8083:8083
+    environment:
+      CONFIG_STORAGE_TOPIC: my_connect_configs
+      OFFSET_STORAGE_TOPIC: my_connect_offsets
+      STATUS_STORAGE_TOPIC: my_connect_statuses
+      BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29093
+    links:
+      - zookeeper
+      - postgres
+    depends_on:
+      - kafka1
+      - kafka2
+      - zookeeper
+      - postgres     
